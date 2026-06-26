@@ -1,0 +1,57 @@
+{
+  "name": "promedbooth-temp",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "seed": "npx tsx prisma/seed.ts"
+  },
+  "prisma": {
+    "seed": "npx tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@auth/prisma-adapter": "^2.11.2",
+    "@cloudinary/react": "^1.14.4",
+    "@cloudinary/url-gen": "^1.22.0",
+    "@hookform/resolvers": "^5.4.0",
+    "@libsql/client": "^0.17.4",
+    "@prisma/adapter-libsql": "^7.8.0",
+    "@prisma/client": "^6.19.3",
+    "cloudinary": "^2.10.0",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.4.0",
+    "fabric": "^5.5.2",
+    "framer-motion": "^12.42.0",
+    "lucide-react": "^1.21.0",
+    "next": "16.2.9",
+    "next-auth": "^5.0.0-beta.31",
+    "prisma": "^6.19.3",
+    "qrcode.react": "^4.2.0",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "react-hook-form": "^7.80.0",
+    "react-hot-toast": "^2.6.0",
+    "recharts": "^3.9.0",
+    "tailwind-merge": "^3.6.0",
+    "uuid": "^14.0.1",
+    "zod": "^4.4.3",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/fabric": "^5.3.11",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/uuid": "^10.0.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.9",
+    "sharp": "^0.35.2",
+    "tailwindcss": "^4",
+    "tsx": "^4.22.4",
+    "typescript": "^5"
+  }
+}

@@ -1,0 +1,434 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  GUEST
+  VIEWER
+  ADMIN
+}
+
+enum EventStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum EventTheme {
+  MINIMALIST
+  VINTAGE
+  NEWSPAPER
+  FUNKY
+  FLORAL
+  RETRO
+}
+
+enum PaymentMethod {
+  FREE
+  CASH
+  QRIS
+  HYBRID
+}
+
+enum PaymentGateway {
+  NONE
+  MIDTRANS
+  TRIPAY
+  XENDIT
+}
+
+enum TransactionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+enum KioskSessionStatus {
+  STARTED
+  PAYMENT_PENDING
+  CAPTURING
+  COMPLETED
+  EXPIRED
+}
+
+enum LayerType {
+  PHOTO_SLOT
+  TEXT
+  STICKER
+  LOGO
+  QR_CODE
+}
+
+enum ChromaKeyMode {
+  CHROMA_KEY
+  AI_REMOVE
+  BACKGROUND_REPLACE
+}
+
+enum ChromaKeyJobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum NotificationType {
+  EVENT_CREATED
+  USER_INVITED
+  REVENUE_RECEIVED
+  STORAGE_WARNING
+  TEMPLATE_CREATED
+}
+
+enum NotificationStatus {
+  UNREAD
+  READ
+}
+
+model Organization {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  logo        String?
+  description String?
+  website     String?
+  instagram   String?
+  youtube     String?
+  tiktok      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users            User[]
+  events           Event[]
+  templates        Template[]
+  transactions     Transaction[]
+  analyticsEvents  AnalyticsEvent[]
+  auditLogs        AuditLog[]
+  notifications    Notification[]
+  storageUsage     StorageUsage?
+  organizationSettings OrganizationSettings?
+
+  @@index([slug])
+  @@index([createdAt])
+}
+
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  name           String?
+  avatar         String?
+  role           Role     @default(VIEWER)
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  accounts     Account[]
+  sessions     Session[]
+  transactions Transaction[]
+  auditLogs    AuditLog[]
+  notifications Notification[]
+
+  @@index([email])
+  @@index([organizationId])
+  @@index([role])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model OrganizationSettings {
+  id             String         @id @default(cuid())
+  organizationId String         @unique
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  storageLimit   Int            @default(25769803776)
+  storageUsed    Int            @default(0)
+  paymentGateway PaymentGateway @default(NONE)
+  gatewayApiKey  String?
+  gatewaySecret  String?
+  qrisImage      String?
+  primaryColor   String         @default("#2563EB")
+  secondaryColor String         @default("#FFFFFF")
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+}
+
+model Event {
+  id                   String      @id @default(cuid())
+  organizationId       String
+  organization         Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name                 String
+  slug                 String      @unique
+  description          String?
+  theme                EventTheme  @default(MINIMALIST)
+  allowGuestThemeChange Boolean   @default(false)
+  templateId           String?
+  template             Template?   @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  status               EventStatus @default(DRAFT)
+  cameraDevice         String?
+  orientation          String      @default("PORTRAIT")
+  zoom                 Float       @default(1.0)
+  mirror               Boolean     @default(true)
+  filters              Json?
+  brandingLogo         String?
+  brandingName         String?
+  eventNameVisible     Boolean     @default(true)
+  welcomeScreen        Json?
+  startButtonText      String      @default("Mulai")
+  backgroundMedia      String?
+  overlayPng           String?
+  fullscreen           Boolean     @default(true)
+  paymentMethod        PaymentMethod @default(FREE)
+  price                Int         @default(0)
+  qrisImage            String?
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+  deletedAt            DateTime?
+
+  photos         Photo[]
+  transactions   Transaction[]
+  kioskSessions  KioskSession[]
+  analyticsEvents AnalyticsEvent[]
+
+  @@index([organizationId])
+  @@index([slug])
+  @@index([status])
+  @@index([organizationId, status])
+  @@index([organizationId, createdAt])
+}
+
+model Template {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  slug           String
+  thumbnail      String?
+  canvasWidth    Int      @default(1080)
+  canvasHeight   Int      @default(1920)
+  isPublic       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  layers TemplateLayer[]
+  events Event[]
+
+  @@index([organizationId])
+  @@index([isPublic])
+  @@index([organizationId, createdAt])
+}
+
+model TemplateLayer {
+  id         String    @id @default(cuid())
+  templateId String
+  template   Template  @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  type       LayerType
+  fabricJson Json
+  zIndex     Int       @default(0)
+  locked     Boolean   @default(false)
+  visible    Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([templateId])
+  @@index([templateId, zIndex])
+}
+
+model Photo {
+  id            String   @id @default(cuid())
+  eventId       String
+  event         Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  sessionId     String?
+  session       KioskSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  originalUrl   String
+  processedUrl  String?
+  thumbnailUrl  String?
+  width         Int      @default(0)
+  height        Int      @default(0)
+  fileSize      Int      @default(0)
+  mimeType      String   @default("image/jpeg")
+  metadata      Json?
+  isPublic      Boolean  @default(true)
+  downloadCount Int      @default(0)
+  createdAt     DateTime @default(now())
+  deletedAt     DateTime?
+
+  chromaKeyJobs ChromaKeyJob[]
+
+  @@index([eventId])
+  @@index([eventId, createdAt])
+  @@index([isPublic])
+  @@index([createdAt])
+}
+
+model KioskSession {
+  id            String            @id @default(cuid())
+  eventId       String
+  event         Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  transactionId String?           @unique
+  transaction   Transaction?      @relation(fields: [transactionId], references: [id])
+  status        KioskSessionStatus @default(STARTED)
+  deviceInfo    Json?
+  ipAddress     String?
+  startedAt     DateTime           @default(now())
+  completedAt   DateTime?
+  expiresAt     DateTime?
+
+  photos Photo[]
+
+  @@index([eventId])
+  @@index([status])
+  @@index([eventId, status])
+  @@index([expiresAt])
+}
+
+model Transaction {
+  id               String            @id @default(cuid())
+  organizationId   String
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  eventId          String
+  event            Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId           String?
+  user             User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  kioskSession     KioskSession?
+  amount           Int
+  currency         String            @default("IDR")
+  method           PaymentMethod     @default(FREE)
+  gateway          PaymentGateway    @default(NONE)
+  gatewayRef       String?
+  status           TransactionStatus @default(PENDING)
+  notes            String?
+  paidAt           DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@index([organizationId])
+  @@index([eventId])
+  @@index([status])
+  @@index([method])
+  @@index([organizationId, createdAt])
+  @@index([eventId, status])
+  @@index([paidAt])
+}
+
+model ChromaKeyJob {
+  id           String            @id @default(cuid())
+  photoId      String
+  photo        Photo             @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  status       ChromaKeyJobStatus @default(PENDING)
+  mode         ChromaKeyMode     @default(AI_REMOVE)
+  targetColor  String?
+  sensitivity  Float?
+  smoothness   Float?
+  replaceImage String?
+  resultUrl    String?
+  createdAt    DateTime          @default(now())
+  completedAt  DateTime?
+
+  @@index([photoId])
+  @@index([status])
+}
+
+model StorageUsage {
+  id             String   @id @default(cuid())
+  organizationId String   @unique
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  totalBytes     Int      @default(0)
+  photoCount     Int      @default(0)
+  templateCount  Int      @default(0)
+  updatedAt      DateTime @updatedAt
+}
+
+model AnalyticsEvent {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  eventId        String?
+  event          Event?   @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  type           String
+  metadata       Json?
+  timestamp      DateTime @default(now())
+
+  @@index([organizationId])
+  @@index([organizationId, timestamp])
+  @@index([type, timestamp])
+  @@index([timestamp])
+}
+
+model AuditLog {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action         String
+  entityType     String
+  entityId       String?
+  metadata       Json?
+  ipAddress      String?
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId])
+  @@index([organizationId, createdAt])
+  @@index([userId])
+  @@index([action])
+  @@index([entityType, entityId])
+}
+
+model Notification {
+  id             String             @id @default(cuid())
+  organizationId String
+  organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String?
+  user           User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type           NotificationType
+  title          String
+  message        String
+  metadata       Json?
+  status         NotificationStatus @default(UNREAD)
+  createdAt      DateTime           @default(now())
+
+  @@index([organizationId])
+  @@index([userId])
+  @@index([status])
+  @@index([organizationId, createdAt])
+}
